@@ -1,4 +1,5 @@
 const core = @import("../core/mod.zig");
+const platform = @import("../platform/mod.zig");
 
 pub const MouseButton = enum(u8) {
     left,
@@ -17,14 +18,20 @@ pub const PointerEvent = struct {
 };
 
 pub const KeyEvent = struct {
-    key_code: u16,
+    key_code: u32,
     action: KeyAction,
 };
 
+pub const WindowResized = struct {
+    window: platform.WindowHandle,
+    size: core.Size,
+};
+
 pub const Event = union(enum) {
+    quit_requested: void,
     pointer_move: PointerEvent,
     pointer_down: PointerEvent,
     pointer_up: PointerEvent,
     key: KeyEvent,
-    window_resized: core.Size,
+    window_resized: WindowResized,
 };

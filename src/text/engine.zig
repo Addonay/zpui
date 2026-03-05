@@ -1,4 +1,5 @@
 const std = @import("std");
+const core = @import("../core/mod.zig");
 
 pub const Direction = enum {
     ltr,
@@ -35,18 +36,25 @@ pub const TextEngine = struct {
     }
 
     pub fn shape(self: *TextEngine, text: []const u8) !ShapedText {
+        return self.shapeSized(text, 14);
+    }
+
+    pub fn shapeSized(self: *TextEngine, text_bytes: []const u8, font_size: f32) !ShapedText {
         var shaped = ShapedText{};
-        const direction = inferDirection(text);
+        const direction = inferDirection(text_bytes);
         const glyph_start = shaped.glyphs.items.len;
-        for (text) |byte| {
-            if (byte < 32) continue;
+        const advance = glyphAdvanceForFontSize(font_size);
+        const view = std.unicode.Utf8View.initUnchecked(text_bytes);
+        var iter = view.iterator();
+        while (iter.nextCodepoint()) |cp| {
+            if (cp < 32) continue;
             try shaped.glyphs.append(self.allocator, .{
-                .id = @as(u32, byte),
-                .advance = 8,
+                .id = @as(u32, cp),
+                .advance = advance,
             });
         }
         try shaped.runs.append(self.allocator, .{
-            .text = text,
+            .text = text_bytes,
             .direction = direction,
             .glyph_start = glyph_start,
             .glyph_count = shaped.glyphs.items.len - glyph_start,
@@ -54,6 +62,31 @@ pub const TextEngine = struct {
         return shaped;
     }
 };
+
+pub fn glyphCount(text_bytes: []const u8) usize {
+    var count: usize = 0;
+    const view = std.unicode.Utf8View.initUnchecked(text_bytes);
+    var iter = view.iterator();
+    while (iter.nextCodepoint()) |cp| {
+        if (cp >= 32) count += 1;
+    }
+    return count;
+}
+
+pub fn glyphAdvanceForFontSize(font_size: f32) f32 {
+    return 8 * (font_size / 14);
+}
+
+pub fn lineHeightForFontSize(font_size: f32) f32 {
+    return font_size * 1.25;
+}
+
+pub fn measureText(text: []const u8, font_size: f32) core.Size {
+    return .{
+        .width = @as(f32, @floatFromInt(glyphCount(text))) * glyphAdvanceForFontSize(font_size),
+        .height = lineHeightForFontSize(font_size),
+    };
+}
 
 pub fn inferDirection(text: []const u8) Direction {
     // This is intentionally conservative as a bootstrap before full bidi support.
@@ -65,4 +98,10 @@ pub fn inferDirection(text: []const u8) Direction {
 
 test "infer direction defaults to ltr" {
     try std.testing.expectEqual(Direction.ltr, inferDirection("hello"));
+}
+
+test "measure text scales with font size" {
+    const measured = measureText("hello", 21);
+    try std.testing.expectEqual(@as(f32, 60), measured.width);
+    try std.testing.expectEqual(@as(f32, 26.25), measured.height);
 }

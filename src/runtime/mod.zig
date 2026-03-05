@@ -11,6 +11,7 @@ pub const PointerEvent = events.PointerEvent;
 pub const KeyEvent = events.KeyEvent;
 pub const MouseButton = events.MouseButton;
 pub const KeyAction = events.KeyAction;
+pub const WindowResized = events.WindowResized;
 pub const Reactor = signals.Reactor;
 pub const EffectId = signals.EffectId;
 pub const Signal = signals.Signal;

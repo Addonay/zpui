@@ -1,5 +1,6 @@
 const std = @import("std");
 const core = @import("../core/mod.zig");
+const text_engine = @import("../text/engine.zig");
 
 pub const LayoutEngine = struct {
     pub fn layoutTree(self: *LayoutEngine, graph: *core.NodeGraph) anyerror!void {
@@ -28,7 +29,7 @@ fn layoutLeaf(
 ) core.Size {
     const node = graph.getConst(node_id);
     const text_width: f32 = if (node.node_type == .text)
-        @as(f32, @floatFromInt(node.text.len)) * 8
+        text_engine.measureText(node.text, 14).width
     else
         0;
     const width = resolveDimension(style.width, style.min_width, style.max_width, text_width + style.padding.horizontal());

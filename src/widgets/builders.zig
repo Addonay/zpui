@@ -62,23 +62,20 @@ pub fn custom(style: core.Style) NodeSpec {
     };
 }
 
-pub fn mount(
-    app: *runtime.App,
-    parent: ?core.NodeId,
-    spec: NodeSpec,
-) !core.NodeId {
+pub fn mount(app: anytype, parent: ?core.NodeId, spec: NodeSpec) !core.NodeId {
     const node_id = try app.createNode(spec.node_type, spec.style, spec.text);
     if (parent) |parent_id| {
         app.appendChild(parent_id, node_id);
     } else {
-        app.graph.setRoot(node_id);
+        app.setRootNode(node_id);
     }
     return node_id;
 }
 
 test "builder mounts text node into app graph" {
     const allocator = std.testing.allocator;
-    var app = runtime.App.init(allocator, @import("../platform/mod.zig").Backend.initNull());
+    var headless_state = @import("../platform/mod.zig").HeadlessPlatformState{};
+    var app = runtime.App.init(allocator, @import("../platform/mod.zig").Platform.initHeadlessWithState(&headless_state));
     defer app.deinit();
 
     const root = try mount(&app, null, column(.{ .gap = 8 }));
