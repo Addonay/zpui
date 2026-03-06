@@ -4,10 +4,12 @@ A Zig UI toolkit.
 
 ## Status
 
-`zpui` is std-first again:
+`zpui` is being pushed back toward GPUI's native-platform model:
 
-- `Platform.initHeadless()` for headless tests, bootstrap frames, and command generation.
-- no in-tree native windowing dependency is required right now.
+- `testing.TestPlatform` for deterministic tests only.
+- no GLFW or SDL wrapper is planned for the real platform path.
+- native bindings are now pinned for the next backend slice:
+  `zig-wayland`, `zigwin32` (vendored), `zig-objc`, `vulkan-zig`, and `Vulkan-Headers`.
 
 It also now has the first GPUI-style application port slice:
 
@@ -46,11 +48,13 @@ const zpui = @import("zpui");
 
 ## Run
 
-Headless bootstrap:
+Current runtime status:
 
 ```bash
 zig build run
 ```
+
+This currently exits with `error.NativePlatformNotImplemented` until a real native backend lands.
 
 ## Docs
 
@@ -63,6 +67,8 @@ zig build run
 
 - `Application` and `App` now mirror the GPUI split more closely
 - `Window` and `AppContext(T)` are the first higher-level app/view-side primitives
-- `RuntimeApp` still drives the frame loop under that higher-level app state
+- the internal app runtime still drives the frame loop under that higher-level app state
 - `platform.Platform` is the start of the real platform contract
-- `text.PlatformTextSystem` is the first text boundary that platform implementations can replace
+- `testing.TestPlatform` is test support, not a production backend
+- `text_system.PlatformTextSystem` is the first text boundary that platform implementations can replace
+- the next real platform step is native Wayland/X11, Win32, and Cocoa/Metal backends, not a wrapper library

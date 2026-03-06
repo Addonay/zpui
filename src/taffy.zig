@@ -1,9 +1,11 @@
 const std = @import("std");
-const core = @import("../core/mod.zig");
-const text_engine = @import("../text/engine.zig");
+const element = @import("element.zig");
+const geometry = @import("geometry.zig");
+const style_mod = @import("style.zig");
+const text_engine = @import("text_system/engine.zig");
 
 pub const LayoutEngine = struct {
-    pub fn layoutTree(self: *LayoutEngine, graph: *core.NodeGraph) anyerror!void {
+    pub fn layoutTree(self: *LayoutEngine, graph: *element.NodeGraph) anyerror!void {
         _ = self;
         if (graph.root_id) |root_id| {
             _ = try layoutNode(graph, root_id, .{});
@@ -11,7 +13,7 @@ pub const LayoutEngine = struct {
     }
 };
 
-fn layoutNode(graph: *core.NodeGraph, node_id: core.NodeId, origin: core.Point) anyerror!core.Size {
+fn layoutNode(graph: *element.NodeGraph, node_id: element.NodeId, origin: geometry.Point) anyerror!geometry.Size {
     const style = graph.getConst(node_id).style;
     return switch (style.display) {
         .grid => try layoutGrid(graph, node_id, style, origin),
@@ -22,11 +24,11 @@ fn layoutNode(graph: *core.NodeGraph, node_id: core.NodeId, origin: core.Point) 
 }
 
 fn layoutLeaf(
-    graph: *core.NodeGraph,
-    node_id: core.NodeId,
-    style: core.Style,
-    origin: core.Point,
-) core.Size {
+    graph: *element.NodeGraph,
+    node_id: element.NodeId,
+    style: style_mod.Style,
+    origin: geometry.Point,
+) geometry.Size {
     const node = graph.getConst(node_id);
     const text_width: f32 = if (node.node_type == .text)
         text_engine.measureText(node.text, 14).width
@@ -50,11 +52,11 @@ fn layoutLeaf(
 }
 
 fn layoutFlex(
-    graph: *core.NodeGraph,
-    node_id: core.NodeId,
-    style: core.Style,
-    origin: core.Point,
-) anyerror!core.Size {
+    graph: *element.NodeGraph,
+    node_id: element.NodeId,
+    style: style_mod.Style,
+    origin: geometry.Point,
+) anyerror!geometry.Size {
     const main_gap = if (style.direction == .row) columnGap(style) else rowGap(style);
     const first_child = graph.getConst(node_id).first_child;
 
@@ -138,16 +140,16 @@ fn layoutFlex(
 }
 
 fn layoutGrid(
-    graph: *core.NodeGraph,
-    node_id: core.NodeId,
-    style: core.Style,
-    origin: core.Point,
-) anyerror!core.Size {
+    graph: *element.NodeGraph,
+    node_id: element.NodeId,
+    style: style_mod.Style,
+    origin: geometry.Point,
+) anyerror!geometry.Size {
     const columns_count: usize = @max(@as(usize, 1), @as(usize, style.grid_columns));
     const col_gap = columnGap(style);
     const r_gap = rowGap(style);
 
-    var children: std.ArrayList(core.NodeId) = .empty;
+    var children: std.ArrayList(element.NodeId) = .empty;
     defer children.deinit(graph.allocator);
 
     var cursor = graph.getConst(node_id).first_child;
@@ -239,11 +241,11 @@ fn layoutGrid(
 }
 
 fn layoutStack(
-    graph: *core.NodeGraph,
-    node_id: core.NodeId,
-    style: core.Style,
-    origin: core.Point,
-) anyerror!core.Size {
+    graph: *element.NodeGraph,
+    node_id: element.NodeId,
+    style: style_mod.Style,
+    origin: geometry.Point,
+) anyerror!geometry.Size {
     var max_width: f32 = 0;
     var max_height: f32 = 0;
     var cursor = graph.getConst(node_id).first_child;
@@ -292,15 +294,15 @@ fn resolveDimension(explicit: ?f32, min: ?f32, max: ?f32, measured: f32) f32 {
     return value;
 }
 
-fn columnGap(style: core.Style) f32 {
+fn columnGap(style: style_mod.Style) f32 {
     return style.column_gap orelse style.gap;
 }
 
-fn rowGap(style: core.Style) f32 {
+fn rowGap(style: style_mod.Style) f32 {
     return style.row_gap orelse style.gap;
 }
 
-fn resolveJustifyStart(style: core.Style, content_main: f32, inner_width: f32, inner_height: f32) f32 {
+fn resolveJustifyStart(style: style_mod.Style, content_main: f32, inner_width: f32, inner_height: f32) f32 {
     const inner_main = if (style.direction == .row) inner_width else inner_height;
     return switch (style.justify_content) {
         .start => 0,
@@ -310,7 +312,7 @@ fn resolveJustifyStart(style: core.Style, content_main: f32, inner_width: f32, i
     };
 }
 
-fn resolveAlignOffset(_align: core.Align, inner_cross: f32, child_cross: f32) f32 {
+fn resolveAlignOffset(_align: geometry.Align, inner_cross: f32, child_cross: f32) f32 {
     return switch (_align) {
         .start => 0,
         .center => @max(0, (inner_cross - child_cross) * 0.5),
@@ -321,14 +323,14 @@ fn resolveAlignOffset(_align: core.Align, inner_cross: f32, child_cross: f32) f3
 
 test "layout flex row places children with gap" {
     const allocator = std.testing.allocator;
-    var graph = core.NodeGraph.init(allocator);
+    var graph = element.NodeGraph.init(allocator);
     defer graph.deinit();
 
     const root = try graph.createNode(.container, .{
         .display = .flex,
         .direction = .row,
         .gap = 10,
-        .padding = core.EdgeInsets.all(4),
+        .padding = geometry.EdgeInsets.all(4),
     }, "");
     graph.setRoot(root);
     const a = try graph.createNode(.container, .{ .width = 30, .height = 20 }, "");
@@ -348,7 +350,7 @@ test "layout flex row places children with gap" {
 
 test "layout grid computes row and column offsets" {
     const allocator = std.testing.allocator;
-    var graph = core.NodeGraph.init(allocator);
+    var graph = element.NodeGraph.init(allocator);
     defer graph.deinit();
 
     const root = try graph.createNode(.container, .{
@@ -356,7 +358,7 @@ test "layout grid computes row and column offsets" {
         .grid_columns = 2,
         .column_gap = 8,
         .row_gap = 6,
-        .padding = core.EdgeInsets.all(2),
+        .padding = geometry.EdgeInsets.all(2),
     }, "");
     graph.setRoot(root);
 

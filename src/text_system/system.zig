@@ -1,5 +1,5 @@
 const std = @import("std");
-const core = @import("../core/mod.zig");
+const geometry = @import("../geometry.zig");
 const engine = @import("engine.zig");
 
 pub const Direction = engine.Direction;
@@ -34,7 +34,7 @@ pub const ShapeOptions = struct {
 };
 
 pub const Metrics = struct {
-    size: core.Size,
+    size: geometry.Size,
     ascent: f32,
     descent: f32,
     line_gap: f32 = 0,

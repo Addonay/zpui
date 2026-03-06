@@ -1,9 +1,11 @@
 const std = @import("std");
-const core = @import("../core/mod.zig");
+const element = @import("../element.zig");
+const geometry = @import("../geometry.zig");
 const platform = @import("../platform/mod.zig");
-const runtime = @import("../runtime/mod.zig");
-const text = @import("../text/mod.zig");
-const entity = @import("entity.zig");
+const runtime = @import("runtime.zig");
+const style_mod = @import("../style.zig");
+const text = @import("../text_system/mod.zig");
+const entity = @import("entity_map.zig");
 
 pub const WindowId = enum(u32) {
     _,
@@ -19,7 +21,7 @@ pub const WindowId = enum(u32) {
 
 pub const WindowOptions = struct {
     title: []const u8 = "zpui",
-    size: core.Size = .{ .width = 960, .height = 640 },
+    size: geometry.Size = .{ .width = 960, .height = 640 },
     resizable: bool = true,
     root: ?entity.AnyEntity = null,
 };
@@ -28,7 +30,7 @@ pub const Window = struct {
     id: WindowId,
     platform_window: platform.WindowHandle = platform.invalid_window_handle,
     title: []const u8,
-    size: core.Size,
+    size: geometry.Size,
     root: ?entity.AnyEntity = null,
     live: bool = true,
 };
@@ -70,18 +72,18 @@ pub const App = struct {
 
     pub fn createNode(
         self: *App,
-        node_type: core.NodeType,
-        style: core.Style,
+        node_type: element.NodeType,
+        style: style_mod.Style,
         text_value: []const u8,
-    ) !core.NodeId {
+    ) !element.NodeId {
         return self.runtime_app.createNode(node_type, style, text_value);
     }
 
-    pub fn appendChild(self: *App, parent: core.NodeId, child: core.NodeId) void {
+    pub fn appendChild(self: *App, parent: element.NodeId, child: element.NodeId) void {
         self.runtime_app.appendChild(parent, child);
     }
 
-    pub fn setRootNode(self: *App, node_id: core.NodeId) void {
+    pub fn setRootNode(self: *App, node_id: element.NodeId) void {
         self.runtime_app.setRootNode(node_id);
     }
 
@@ -264,8 +266,9 @@ pub const Application = struct {
 
 test "application app tracks windows and typed roots" {
     const allocator = std.testing.allocator;
-    var headless_state = platform.HeadlessPlatformState{};
-    var app = App.init(allocator, platform.Platform.initHeadlessWithState(&headless_state));
+    var test_platform_state = platform.@"test".TestPlatformState{};
+    var test_platform = platform.@"test".TestPlatform.init(&test_platform_state);
+    var app = App.init(allocator, test_platform.asPlatform());
     defer app.deinit();
 
     const View = struct { title: []const u8 };
@@ -287,8 +290,9 @@ test "application app tracks windows and typed roots" {
 
 test "application wrapper bootstraps one frame" {
     const allocator = std.testing.allocator;
-    var headless_state = platform.HeadlessPlatformState{};
-    var application = Application.init(allocator, platform.Platform.initHeadlessWithState(&headless_state));
+    var test_platform_state = platform.@"test".TestPlatformState{};
+    var test_platform = platform.@"test".TestPlatform.init(&test_platform_state);
+    var application = Application.init(allocator, test_platform.asPlatform());
     defer application.deinit();
 
     const Model = struct { value: usize };
@@ -305,12 +309,13 @@ test "application wrapper bootstraps one frame" {
 
 test "application delegates clipboard and cursor services" {
     const allocator = std.testing.allocator;
-    var headless_state = platform.HeadlessPlatformState{};
-    var app = App.init(allocator, platform.Platform.initHeadlessWithState(&headless_state));
+    var test_platform_state = platform.@"test".TestPlatformState{};
+    var test_platform = platform.@"test".TestPlatform.init(&test_platform_state);
+    var app = App.init(allocator, test_platform.asPlatform());
     defer app.deinit();
 
     try app.setCursorStyle(.text);
-    try std.testing.expectEqual(platform.CursorStyle.text, headless_state.cursor_style);
+    try std.testing.expectEqual(platform.CursorStyle.text, test_platform_state.cursor_style);
 
     try app.writeClipboardText("workspace");
     const clipboard = (try app.readClipboardText()).?;

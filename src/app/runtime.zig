@@ -1,12 +1,14 @@
 const std = @import("std");
-const core = @import("../core/mod.zig");
-const layout = @import("../layout/mod.zig");
-const render = @import("../render/mod.zig");
+const element = @import("../element.zig");
+const executor = @import("../executor.zig");
+const geometry = @import("../geometry.zig");
+const input = @import("../input.zig");
 const platform = @import("../platform/mod.zig");
-const text_mod = @import("../text/mod.zig");
-const events = @import("events.zig");
-const signals = @import("signals.zig");
-const tasks = @import("tasks.zig");
+const scene = @import("../scene.zig");
+const subscription = @import("../subscription.zig");
+const taffy = @import("../taffy.zig");
+const text_mod = @import("../text_system/mod.zig");
+const style_mod = @import("../style.zig");
 
 pub const Phase = enum {
     events,
@@ -33,27 +35,27 @@ pub const FrameTrace = struct {
 
 pub const App = struct {
     allocator: std.mem.Allocator,
-    graph: core.NodeGraph,
-    reactor: signals.Reactor,
-    layout_engine: layout.LayoutEngine = .{},
-    renderer: render.Renderer,
+    graph: element.NodeGraph,
+    reactor: subscription.Reactor,
+    layout_engine: taffy.LayoutEngine = .{},
+    renderer: scene.Renderer,
     platform_impl: platform.Platform,
     text_system: text_mod.TextSystem,
-    scheduler: tasks.TaskScheduler,
+    scheduler: executor.TaskScheduler,
     frame_trace: FrameTrace = .{},
-    event_queue: std.ArrayList(events.Event) = .empty,
+    event_queue: std.ArrayList(input.Event) = .empty,
     quit_requested: bool = false,
-    window_size: ?core.Size = null,
+    window_size: ?geometry.Size = null,
 
     pub fn init(allocator: std.mem.Allocator, platform_impl: platform.Platform) App {
         return .{
             .allocator = allocator,
-            .graph = core.NodeGraph.init(allocator),
-            .reactor = signals.Reactor.init(allocator),
-            .renderer = render.Renderer.init(allocator),
+            .graph = element.NodeGraph.init(allocator),
+            .reactor = subscription.Reactor.init(allocator),
+            .renderer = scene.Renderer.init(allocator),
             .platform_impl = platform_impl,
             .text_system = text_mod.TextSystem.init(allocator, platform_impl.textSystem()),
-            .scheduler = tasks.TaskScheduler.init(allocator),
+            .scheduler = executor.TaskScheduler.init(allocator),
         };
     }
 
@@ -67,18 +69,18 @@ pub const App = struct {
 
     pub fn createNode(
         self: *App,
-        node_type: core.NodeType,
-        style: core.Style,
+        node_type: element.NodeType,
+        style: style_mod.Style,
         text_value: []const u8,
-    ) !core.NodeId {
+    ) !element.NodeId {
         return self.graph.createNode(node_type, style, text_value);
     }
 
-    pub fn appendChild(self: *App, parent: core.NodeId, child: core.NodeId) void {
+    pub fn appendChild(self: *App, parent: element.NodeId, child: element.NodeId) void {
         self.graph.appendChild(parent, child);
     }
 
-    pub fn setRootNode(self: *App, node_id: core.NodeId) void {
+    pub fn setRootNode(self: *App, node_id: element.NodeId) void {
         self.graph.setRoot(node_id);
     }
 
@@ -123,7 +125,7 @@ pub const App = struct {
         return self.quit_requested;
     }
 
-    pub fn currentWindowSize(self: *const App) ?core.Size {
+    pub fn currentWindowSize(self: *const App) ?geometry.Size {
         return self.window_size;
     }
 
@@ -156,11 +158,11 @@ pub const App = struct {
         try self.platform_impl.writeClipboardText(value);
     }
 
-    pub fn postToUi(self: *App, callback: tasks.TaskFn, ctx: *anyopaque) !void {
+    pub fn postToUi(self: *App, callback: executor.TaskFn, ctx: *anyopaque) !void {
         try self.scheduler.postToUi(callback, ctx);
     }
 
-    pub fn spawnTask(self: *App, callback: tasks.TaskFn, ctx: *anyopaque) !void {
+    pub fn spawnTask(self: *App, callback: executor.TaskFn, ctx: *anyopaque) !void {
         try self.scheduler.spawnTask(callback, ctx);
     }
 
@@ -174,22 +176,23 @@ pub const App = struct {
         }
     }
 
-    pub fn recentEvents(self: *const App) []const events.Event {
+    pub fn recentEvents(self: *const App) []const input.Event {
         return self.event_queue.items;
     }
 };
 
 test "app frame executes phases in order" {
     const allocator = std.testing.allocator;
-    var headless_state = platform.HeadlessPlatformState{};
-    const platform_impl = platform.Platform.initHeadlessWithState(&headless_state);
+    var test_platform_state = platform.@"test".TestPlatformState{};
+    var test_platform = platform.@"test".TestPlatform.init(&test_platform_state);
+    const platform_impl = test_platform.asPlatform();
     var app = App.init(allocator, platform_impl);
     defer app.deinit();
 
     const root = try app.createNode(.container, .{
         .display = .flex,
         .direction = .column,
-        .padding = core.EdgeInsets.all(8),
+        .padding = geometry.EdgeInsets.all(8),
     }, "");
     app.graph.setRoot(root);
     const text_node = try app.createNode(.text, .{
@@ -217,7 +220,7 @@ test "app tracks platform quit and resize state" {
 
         fn poll(
             ctx: *anyopaque,
-            queue: *std.ArrayList(events.Event),
+            queue: *std.ArrayList(input.Event),
             allocator_arg: std.mem.Allocator,
         ) !void {
             const self: *@This() = @ptrCast(@alignCast(ctx));
@@ -235,7 +238,7 @@ test "app tracks platform quit and resize state" {
             try queue.append(allocator_arg, .{ .quit_requested = {} });
         }
 
-        fn present(ctx: *anyopaque, commands: []const render.DrawCommand) !void {
+        fn present(ctx: *anyopaque, commands: []const scene.DrawCommand) !void {
             _ = ctx;
             _ = commands;
         }
@@ -296,15 +299,16 @@ test "app tracks platform quit and resize state" {
 
 test "app exposes backend platform services" {
     const allocator = std.testing.allocator;
-    var headless_state = platform.HeadlessPlatformState{};
-    var app = App.init(allocator, platform.Platform.initHeadlessWithState(&headless_state));
+    var test_platform_state = platform.@"test".TestPlatformState{};
+    var test_platform = platform.@"test".TestPlatform.init(&test_platform_state);
+    var app = App.init(allocator, test_platform.asPlatform());
     defer app.deinit();
 
     const platform_window = try app.openPlatformWindow(.{ .title = "Scratchpad" });
     try std.testing.expect(platform_window != platform.invalid_window_handle);
 
     try app.setCursorStyle(.pointer);
-    try std.testing.expectEqual(platform.CursorStyle.pointer, headless_state.cursor_style);
+    try std.testing.expectEqual(platform.CursorStyle.pointer, test_platform_state.cursor_style);
 
     try app.writeClipboardText("zpui");
     const clipboard = (try app.readClipboardText()).?;

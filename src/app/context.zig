@@ -1,8 +1,8 @@
 const std = @import("std");
 const application = @import("application.zig");
-const entity_mod = @import("entity.zig");
+const entity_mod = @import("entity_map.zig");
 const platform = @import("../platform/mod.zig");
-const text = @import("../text/mod.zig");
+const text = @import("../text_system/mod.zig");
 
 pub fn Context(comptime T: type) type {
     return struct {
@@ -68,8 +68,9 @@ pub fn Context(comptime T: type) type {
 
 test "typed app context updates entities and forwards platform services" {
     const allocator = std.testing.allocator;
-    var headless_state = platform.HeadlessPlatformState{};
-    var app = application.App.init(allocator, platform.Platform.initHeadlessWithState(&headless_state));
+    var test_platform_state = platform.@"test".TestPlatformState{};
+    var test_platform = platform.@"test".TestPlatform.init(&test_platform_state);
+    var app = application.App.init(allocator, test_platform.asPlatform());
     defer app.deinit();
 
     const Counter = struct { value: usize };
@@ -87,7 +88,7 @@ test "typed app context updates entities and forwards platform services" {
     try std.testing.expectEqual(@as(usize, 7), (try cx.get()).value);
 
     try cx.setCursorStyle(.text);
-    try std.testing.expectEqual(platform.CursorStyle.text, headless_state.cursor_style);
+    try std.testing.expectEqual(platform.CursorStyle.text, test_platform_state.cursor_style);
 
     try cx.writeClipboardText("hello");
     const clipboard = (try cx.readClipboardText()).?;

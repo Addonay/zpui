@@ -1,4 +1,4 @@
-const types = @import("types.zig");
+const geometry = @import("geometry.zig");
 
 pub const Display = enum {
     flex,
@@ -22,9 +22,9 @@ pub const Justify = enum {
 
 pub const Style = struct {
     display: Display = .flex,
-    direction: types.Axis = .column,
+    direction: geometry.Axis = .column,
     wrap: Wrap = .no_wrap,
-    align_items: types.Align = .start,
+    align_items: geometry.Align = .start,
     justify_content: Justify = .start,
     gap: f32 = 0,
     row_gap: ?f32 = null,
@@ -35,13 +35,13 @@ pub const Style = struct {
     min_height: ?f32 = null,
     max_width: ?f32 = null,
     max_height: ?f32 = null,
-    padding: types.EdgeInsets = .{},
-    margin: types.EdgeInsets = .{},
-    background: ?types.Color = null,
-    text_color: ?types.Color = null,
+    padding: geometry.EdgeInsets = .{},
+    margin: geometry.EdgeInsets = .{},
+    background: ?geometry.Color = null,
+    text_color: ?geometry.Color = null,
     border_radius: f32 = 0,
     border_width: f32 = 0,
-    border_color: ?types.Color = null,
+    border_color: ?geometry.Color = null,
     grid_columns: u16 = 1,
     grid_rows: u16 = 0,
 

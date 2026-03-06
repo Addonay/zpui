@@ -1,5 +1,5 @@
 const std = @import("std");
-const core = @import("../core/mod.zig");
+const geometry = @import("../geometry.zig");
 
 pub const Direction = enum {
     ltr,
@@ -81,7 +81,7 @@ pub fn lineHeightForFontSize(font_size: f32) f32 {
     return font_size * 1.25;
 }
 
-pub fn measureText(text: []const u8, font_size: f32) core.Size {
+pub fn measureText(text: []const u8, font_size: f32) geometry.Size {
     return .{
         .width = @as(f32, @floatFromInt(glyphCount(text))) * glyphAdvanceForFontSize(font_size),
         .height = lineHeightForFontSize(font_size),

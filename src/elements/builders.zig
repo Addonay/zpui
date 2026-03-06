@@ -1,14 +1,15 @@
 const std = @import("std");
-const core = @import("../core/mod.zig");
-const runtime = @import("../runtime/mod.zig");
+const element = @import("../element.zig");
+const app_runtime = @import("../app/runtime.zig");
+const style_mod = @import("../style.zig");
 
 pub const NodeSpec = struct {
-    node_type: core.NodeType = .container,
-    style: core.Style = .{},
+    node_type: element.NodeType = .container,
+    style: style_mod.Style = .{},
     text: []const u8 = "",
 };
 
-pub fn row(style: core.Style) NodeSpec {
+pub fn row(style: style_mod.Style) NodeSpec {
     var next = style;
     next.display = .flex;
     next.direction = .row;
@@ -17,7 +18,7 @@ pub fn row(style: core.Style) NodeSpec {
     };
 }
 
-pub fn column(style: core.Style) NodeSpec {
+pub fn column(style: style_mod.Style) NodeSpec {
     var next = style;
     next.display = .flex;
     next.direction = .column;
@@ -26,7 +27,7 @@ pub fn column(style: core.Style) NodeSpec {
     };
 }
 
-pub fn grid(columns: u16, style: core.Style) NodeSpec {
+pub fn grid(columns: u16, style: style_mod.Style) NodeSpec {
     var next = style;
     next.display = .grid;
     next.grid_columns = if (columns == 0) 1 else columns;
@@ -35,7 +36,7 @@ pub fn grid(columns: u16, style: core.Style) NodeSpec {
     };
 }
 
-pub fn stack(style: core.Style) NodeSpec {
+pub fn stack(style: style_mod.Style) NodeSpec {
     var next = style;
     next.display = .stack;
     return .{
@@ -43,7 +44,7 @@ pub fn stack(style: core.Style) NodeSpec {
     };
 }
 
-pub fn text(content: []const u8, style: core.Style) NodeSpec {
+pub fn text(content: []const u8, style: style_mod.Style) NodeSpec {
     var next = style;
     next.display = .text;
     return .{
@@ -53,7 +54,7 @@ pub fn text(content: []const u8, style: core.Style) NodeSpec {
     };
 }
 
-pub fn custom(style: core.Style) NodeSpec {
+pub fn custom(style: style_mod.Style) NodeSpec {
     var next = style;
     next.display = .custom;
     return .{
@@ -62,7 +63,7 @@ pub fn custom(style: core.Style) NodeSpec {
     };
 }
 
-pub fn mount(app: anytype, parent: ?core.NodeId, spec: NodeSpec) !core.NodeId {
+pub fn mount(app: anytype, parent: ?element.NodeId, spec: NodeSpec) !element.NodeId {
     const node_id = try app.createNode(spec.node_type, spec.style, spec.text);
     if (parent) |parent_id| {
         app.appendChild(parent_id, node_id);
@@ -74,13 +75,15 @@ pub fn mount(app: anytype, parent: ?core.NodeId, spec: NodeSpec) !core.NodeId {
 
 test "builder mounts text node into app graph" {
     const allocator = std.testing.allocator;
-    var headless_state = @import("../platform/mod.zig").HeadlessPlatformState{};
-    var app = runtime.App.init(allocator, @import("../platform/mod.zig").Platform.initHeadlessWithState(&headless_state));
+    const platform = @import("../platform/mod.zig");
+    var test_platform_state = platform.@"test".TestPlatformState{};
+    var test_platform = platform.@"test".TestPlatform.init(&test_platform_state);
+    var app = app_runtime.App.init(allocator, test_platform.asPlatform());
     defer app.deinit();
 
     const root = try mount(&app, null, column(.{ .gap = 8 }));
     const child = try mount(&app, root, text("value", .{}));
 
     try std.testing.expectEqual(@as(usize, 1), app.graph.childCount(root));
-    try std.testing.expectEqual(core.NodeType.text, app.graph.getConst(child).node_type);
+    try std.testing.expectEqual(element.NodeType.text, app.graph.getConst(child).node_type);
 }

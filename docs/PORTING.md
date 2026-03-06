@@ -10,7 +10,7 @@ port the architecture:
 - explicit platform abstraction
 - strong text pipeline
 - GPU-first rendering
-- testable headless paths
+- test-only platform support
 
 ## Current Mapping
 
@@ -24,12 +24,13 @@ GPUI entity map / reservations
 GPUI platform abstraction
 - `zpui` now has the start of a wider platform contract.
 - The current backend surface owns event polling, present, window opening/closing, clipboard text, cursor style, and text-system access.
-- The only in-tree implementation is now a headless/std-first bootstrap platform while the contract settles.
+- The only in-tree implementation right now is a test platform, matching GPUI's approach to fake platform support.
+- The repo now pins GPUI-style native binding dependencies instead of planning around SDL or GLFW.
 - The platform API still needs to grow into displays, IME, menus, timers, and richer window semantics.
 
 GPUI text system
 - `zpui` now has a formal `PlatformTextSystem` plus a std-first bootstrap implementation.
-- It can shape and measure text conservatively for tests and headless flows.
+- It can shape and measure text conservatively for tests and early porting work.
 - It still does not have shaping, font fallback, glyph rasterization, wrapping, or IME-aware text input.
 
 GPUI scene and renderer
@@ -45,6 +46,7 @@ GPUI scene and renderer
 - added a formal text-system boundary with a noop/bootstrap implementation
 - added a minimal typed app-context surface on top of the entity store
 - removed the SDL bootstrap path from the package surface to keep the port std-first
+- pinned native platform and renderer bindings for Wayland, Win32, Cocoa/Metal, and Vulkan work
 
 ## Near-Term Port Order
 
@@ -52,7 +54,7 @@ GPUI scene and renderer
 2. Split renderer responsibilities into scene building and GPU submission.
 3. Replace bootstrap text measurement with a proper shaping and glyph pipeline.
 4. Grow the platform API into displays, timers, IME, menus, and richer window semantics.
-5. Add a real native platform backend only after the contract is stable enough to support it cleanly.
+5. Add real native platform backends on top of those bindings, starting with Linux Wayland/X11.
 
 ## Non-Goals Right Now
 

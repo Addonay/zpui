@@ -13,12 +13,20 @@ replaceable backend dependencies instead of handing framework ownership away.
 
 ## Adopted Now
 
-No external runtime library is currently required by the package surface.
+The repo now pins the native binding stack that best matches GPUI's direction:
+
+- `zig-wayland` for native Linux Wayland work
+- `zigwin32` for native Win32 and DirectX-side bindings
+- `zig-objc` for Cocoa/AppKit/Metal-side bindings
+- `vulkan-zig` plus `Vulkan-Headers` for the Vulkan renderer path
 
 Current role of the shared core:
-- headless platform bootstrap
+- test-only platform support while native backends are still being wired
 - retained app/runtime/layout/render architecture work
 - std-first text measurement bootstrap for tests and early porting slices
+
+Current gap:
+- there is not yet a pinned de facto Zig-native X11 package in this repo, so X11 still needs either generated bindings or direct system bindings when that backend is ported
 
 ## Likely Next External Dependencies
 
@@ -94,7 +102,8 @@ Official reference:
 ## Current Recommendation
 
 1. Keep core framework code std-first.
-2. Keep the headless platform path as the only in-tree implementation until the shared contract settles.
+2. Port native Wayland/Win32/Cocoa backends on top of the pinned bindings instead of adding GLFW or SDL.
 3. Use HarfBuzz + FreeType when the text system graduates from bootstrap mode.
-4. Evaluate native backend libraries only after the `zpui` platform API is wider
+4. Evaluate X11 binding options once the Linux backend split is clearer.
+5. Evaluate native backend libraries only after the `zpui` platform API is wider
    and more stable than it is today.

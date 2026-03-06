@@ -1,10 +1,13 @@
 const std = @import("std");
-const core = @import("../core/mod.zig");
-const commands = @import("commands.zig");
+const draw_command = @import("draw_command.zig");
+const element = @import("element.zig");
+const geometry = @import("geometry.zig");
+
+pub const DrawCommand = draw_command.DrawCommand;
 
 pub const Renderer = struct {
     allocator: std.mem.Allocator,
-    commands: std.ArrayList(commands.DrawCommand) = .empty,
+    commands: std.ArrayList(DrawCommand) = .empty,
 
     pub fn init(allocator: std.mem.Allocator) Renderer {
         return .{ .allocator = allocator };
@@ -18,14 +21,14 @@ pub const Renderer = struct {
         self.commands.clearRetainingCapacity();
     }
 
-    pub fn build(self: *Renderer, graph: *const core.NodeGraph) !void {
+    pub fn build(self: *Renderer, graph: *const element.NodeGraph) !void {
         self.clear();
         if (graph.root_id) |root_id| {
             try self.collectNode(graph, root_id);
         }
     }
 
-    fn collectNode(self: *Renderer, graph: *const core.NodeGraph, node_id: core.NodeId) !void {
+    fn collectNode(self: *Renderer, graph: *const element.NodeGraph, node_id: element.NodeId) !void {
         const node = graph.getConst(node_id);
         const rect = node.layout.rect;
         if (node.style.background) |background| {
@@ -43,7 +46,7 @@ pub const Renderer = struct {
                 .text = .{
                     .rect = rect,
                     .text = node.text,
-                    .color = node.style.text_color orelse core.Color.rgb(245, 245, 245),
+                    .color = node.style.text_color orelse geometry.Color.rgb(245, 245, 245),
                 },
             });
         }
@@ -58,19 +61,19 @@ pub const Renderer = struct {
 
 test "renderer emits background and text commands" {
     const allocator = std.testing.allocator;
-    var graph = core.NodeGraph.init(allocator);
+    var graph = element.NodeGraph.init(allocator);
     defer graph.deinit();
 
     const root = try graph.createNode(.container, .{
         .display = .flex,
-        .background = core.Color.rgb(20, 30, 40),
+        .background = geometry.Color.rgb(20, 30, 40),
         .width = 100,
         .height = 80,
     }, "");
     graph.setRoot(root);
     const text = try graph.createNode(.text, .{
         .display = .text,
-        .text_color = core.Color.rgb(1, 2, 3),
+        .text_color = geometry.Color.rgb(1, 2, 3),
         .width = 80,
         .height = 18,
     }, "hello");

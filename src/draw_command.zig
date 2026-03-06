@@ -1,19 +1,19 @@
-const core = @import("../core/mod.zig");
+const geometry = @import("geometry.zig");
 
 pub const FillRect = struct {
-    rect: core.Rect,
-    color: core.Color,
+    rect: geometry.Rect,
+    color: geometry.Color,
     radius: f32 = 0,
 };
 
 pub const TextRun = struct {
-    rect: core.Rect,
+    rect: geometry.Rect,
     text: []const u8,
-    color: core.Color,
+    color: geometry.Color,
 };
 
 pub const ClipRect = struct {
-    rect: core.Rect,
+    rect: geometry.Rect,
 };
 
 pub const DrawCommand = union(enum) {
